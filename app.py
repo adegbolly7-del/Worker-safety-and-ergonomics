@@ -3,10 +3,14 @@ import pandas as pd
 import numpy as np
 import joblib
 
-st.set_page_config(page_title="Worker Safety & Ergonomics", page_icon="🦺")
+st.set_page_config(
+    page_title="Worker Safety & Ergonomics Predictor",
+    page_icon="🦺",
+    layout="centered"
+)
 
 # --------------------------------------------------
-# Load model & scaler
+# Load trained model and scaler
 # --------------------------------------------------
 @st.cache_resource
 def load_artifacts():
@@ -17,55 +21,86 @@ def load_artifacts():
 model, scaler = load_artifacts()
 
 # --------------------------------------------------
-# Load dataset & prepare features SAFELY
+# Load dataset & rebuild preprocessing (EXACT)
 # --------------------------------------------------
 @st.cache_data
-def load_feature_columns():
+def load_training_structure():
     df = pd.read_csv("worker_safety_ergonomics_dataset.csv")
 
-    # Automatically detect target-like columns
-    drop_cols = []
-    for col in df.columns:
-        name = col.lower()
-        if "posture" in name or "label" in name or "score" in name or "id" in name:
-            drop_cols.append(col)
+    # Remove target / ID columns safely (same idea as notebook)
+    drop_cols = [
+        c for c in df.columns
+        if any(x in c.lower() for x in ["posture", "label", "score", "id"])
+    ]
 
     X = df.drop(columns=drop_cols, errors="ignore")
 
-    X_encoded = pd.get_dummies(X, drop_first=True)
-    return X_encoded.columns
+    categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
+    numeric_cols = X.select_dtypes(exclude=["object"]).columns.tolist()
 
-feature_columns = load_feature_columns()
+    X_encoded = pd.get_dummies(X, drop_first=True)
+
+    return X, categorical_cols, numeric_cols, X_encoded.columns
+
+X_raw, cat_cols, num_cols, final_feature_columns = load_training_structure()
 
 # --------------------------------------------------
 # UI
 # --------------------------------------------------
-st.title("🦺 Worker Safety & Ergonomics Predictor")
-st.write("Predict worker posture condition using ergonomic data")
+st.title("🦺 Worker Safety & Ergonomics Prediction")
+st.write("This app follows the exact preprocessing steps used during model training.")
 
 st.divider()
-st.subheader("Input Parameters")
+st.subheader("Enter Worker Information")
 
-user_input = {}
-for col in feature_columns:
-    user_input[col] = st.number_input(col, value=0.0)
+user_data = {}
 
-input_df = pd.DataFrame([user_input])
+# -------- Numeric Inputs → Sliders
+for col in num_cols:
+    min_val = float(X_raw[col].min())
+    max_val = float(X_raw[col].max())
+    mean_val = float(X_raw[col].mean())
+
+    user_data[col] = st.slider(
+        label=col,
+        min_value=min_val,
+        max_value=max_val,
+        value=mean_val
+    )
+
+# -------- Categorical Inputs → Dropdowns
+for col in cat_cols:
+    options = X_raw[col].dropna().unique().tolist()
+    user_data[col] = st.selectbox(col, options)
+
+# --------------------------------------------------
+# Convert input to DataFrame
+# --------------------------------------------------
+input_df = pd.DataFrame([user_data])
+
+# Apply SAME encoding as training
+input_encoded = pd.get_dummies(input_df, drop_first=True)
+
+# Align with training feature space
+input_encoded = input_encoded.reindex(
+    columns=final_feature_columns,
+    fill_value=0
+)
 
 # --------------------------------------------------
 # Prediction
 # --------------------------------------------------
-if st.button("🔍 Predict"):
+if st.button("🔍 Predict Posture Condition"):
     try:
-        scaled = scaler.transform(input_df)
-        pred = model.predict(scaled)[0]
+        scaled_input = scaler.transform(input_encoded)
+        prediction = model.predict(scaled_input)[0]
 
-        st.success(f"✅ Predicted Posture: **{pred}**")
+        st.success(f"✅ Predicted Posture Label: **{prediction}**")
 
         if hasattr(model, "predict_proba"):
-            prob = np.max(model.predict_proba(scaled))
-            st.info(f"📊 Confidence: **{prob:.2%}**")
+            confidence = np.max(model.predict_proba(scaled_input))
+            st.info(f"📊 Prediction Confidence: **{confidence:.2%}**")
 
     except Exception as e:
-        st.error("Prediction failed")
+        st.error("❌ Prediction failed")
         st.code(str(e))
