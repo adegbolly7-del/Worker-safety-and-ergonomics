@@ -3,14 +3,10 @@ import pandas as pd
 import numpy as np
 import joblib
 
-st.set_page_config(
-    page_title="Worker Safety & Ergonomics",
-    page_icon="🦺",
-    layout="centered"
-)
+st.set_page_config(page_title="Worker Safety & Ergonomics", page_icon="🦺")
 
 # --------------------------------------------------
-# Load model and scaler
+# Load model & scaler
 # --------------------------------------------------
 @st.cache_resource
 def load_artifacts():
@@ -21,60 +17,55 @@ def load_artifacts():
 model, scaler = load_artifacts()
 
 # --------------------------------------------------
-# Load dataset & recreate feature structure
+# Load dataset & prepare features SAFELY
 # --------------------------------------------------
 @st.cache_data
-def get_feature_template():
+def load_feature_columns():
     df = pd.read_csv("worker_safety_ergonomics_dataset.csv")
 
-    # Remove target & ID columns safely
-    target_like = ['posture', 'label', 'score', 'id']
-    drop_cols = [c for c in df.columns if any(t in c.lower() for t in target_like)]
+    # Automatically detect target-like columns
+    drop_cols = []
+    for col in df.columns:
+        name = col.lower()
+        if "posture" in name or "label" in name or "score" in name or "id" in name:
+            drop_cols.append(col)
 
-    X = df.drop(columns=drop_cols)
+    X = df.drop(columns=drop_cols, errors="ignore")
 
     X_encoded = pd.get_dummies(X, drop_first=True)
+    return X_encoded.columns
 
-    return X_encoded
-
-feature_template = get_feature_template()
-feature_columns = feature_template.columns
+feature_columns = load_feature_columns()
 
 # --------------------------------------------------
 # UI
 # --------------------------------------------------
-st.title("🦺 Worker Safety & Ergonomics Prediction")
-st.write("Predict worker posture condition based on ergonomic and safety inputs.")
+st.title("🦺 Worker Safety & Ergonomics Predictor")
+st.write("Predict worker posture condition using ergonomic data")
 
 st.divider()
-st.subheader("Input Worker Parameters")
+st.subheader("Input Parameters")
 
 user_input = {}
-
 for col in feature_columns:
-    user_input[col] = st.number_input(
-        col,
-        value=0.0,
-        step=0.1
-    )
+    user_input[col] = st.number_input(col, value=0.0)
 
 input_df = pd.DataFrame([user_input])
 
 # --------------------------------------------------
 # Prediction
 # --------------------------------------------------
-if st.button("🔍 Predict Posture Status"):
+if st.button("🔍 Predict"):
     try:
-        scaled_input = scaler.transform(input_df)
-        prediction = model.predict(scaled_input)[0]
+        scaled = scaler.transform(input_df)
+        pred = model.predict(scaled)[0]
+
+        st.success(f"✅ Predicted Posture: **{pred}**")
 
         if hasattr(model, "predict_proba"):
-            confidence = np.max(model.predict_proba(scaled_input))
-            st.success(f"✅ Prediction: **{prediction}**")
-            st.info(f"📊 Confidence: **{confidence:.2%}**")
-        else:
-            st.success(f"✅ Prediction: **{prediction}**")
+            prob = np.max(model.predict_proba(scaled))
+            st.info(f"📊 Confidence: **{prob:.2%}**")
 
     except Exception as e:
-        st.error("❌ Prediction failed")
+        st.error("Prediction failed")
         st.code(str(e))
