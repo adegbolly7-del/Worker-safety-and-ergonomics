@@ -21,16 +21,22 @@ model, scaler = load_model()
 def load_feature_columns():
     df = pd.read_csv("worker_safety_ergonomics_dataset.csv")
 
-    X = df.drop(columns=[
+    # Columns to remove if they exist
+    drop_cols = [
         'Worker_ID',
+        'worker_id',
         'Posture_Score',
-        'posture_label'
-    ])
+        'posture_score',
+        'posture_label',
+        'Posture_Label'
+    ]
+
+    existing_drop_cols = [c for c in drop_cols if c in df.columns]
+
+    X = df.drop(columns=existing_drop_cols)
 
     X_encoded = pd.get_dummies(X, drop_first=True)
     return X_encoded.columns
-
-feature_columns = load_feature_columns()
 
 # -----------------------------
 # App UI
@@ -71,3 +77,4 @@ if st.button("🔍 Predict Posture Risk"):
     except Exception as e:
         st.error("❌ Prediction failed")
         st.code(str(e))
+
