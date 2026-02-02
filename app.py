@@ -25,25 +25,25 @@ model, scaler = load_artifacts()
 # --------------------------------------------------
 @st.cache_data
 def load_training_structure():
+    # Load the dataset
     df = pd.read_csv("worker_safety_ergonomics_dataset.csv")
 
-    # Remove target / ID columns safely (same idea as notebook)
-    drop_cols = [
-        c for c in df.columns
-        if any(x in c.lower() for x in ["posture", "label", "score", "id"])
-    ]
+    # Columns we want to drop (target / ID columns)
+    potential_drop_cols = ['Worker_ID', 'Posture_Score', 'posture_label']
 
-    X = df.drop(columns=drop_cols, errors="ignore")
+    # Only drop columns that exist to avoid KeyError
+    drop_cols = [c for c in potential_drop_cols if c in df.columns]
+    X = df.drop(columns=drop_cols)
 
+    # Identify categorical and numeric columns
     categorical_cols = X.select_dtypes(include=["object"]).columns.tolist()
     numeric_cols = X.select_dtypes(exclude=["object"]).columns.tolist()
 
+    # One-hot encode categorical features (drop first to avoid dummy trap)
     X_encoded = pd.get_dummies(X, drop_first=True)
 
+    # Return original X, column lists, and final feature names
     return X, categorical_cols, numeric_cols, X_encoded.columns
-
-X_raw, cat_cols, num_cols, final_feature_columns = load_training_structure()
-
 # --------------------------------------------------
 # UI
 # --------------------------------------------------
@@ -104,3 +104,4 @@ if st.button("🔍 Predict Posture Condition"):
     except Exception as e:
         st.error("❌ Prediction failed")
         st.code(str(e))
+
