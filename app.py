@@ -22,9 +22,11 @@ breaks_taken = st.number_input("Breaks Taken Per Day", 0, 10, 2, 1)
 pain_level = st.number_input("Reported Pain Level (0-10)", 0, 10, 5, 1)
 
 # New 3 features – placeholders; replace names and ranges if known
-feature_7 = st.number_input("Feature 7 (placeholder)", 0.0, 100.0, 0.0, 0.1)
-feature_8 = st.number_input("Feature 8 (placeholder)", 0.0, 100.0, 0.0, 0.1)
-feature_9 = st.number_input("Feature 9 (placeholder)", 0.0, 100.0, 0.0, 0.1)
+lift_weight = st.number_input("Average Lift Weight (kg)", 0.0, 100.0, 10.0, 0.1)
+repetitive_motion = st.number_input("Repetitive Motions Per Hour", 0, 500, 50, 1)
+static_posture_duration = st.number_input("Duration of Static Posture (minutes)", 0, 480, 60, 1)
+
+# Prepare input array
 
 # Prepare input array
 input_data = np.array([[age, hours_worked, posture_score, movement_freq,
@@ -47,3 +49,4 @@ st.write("""
 Note: The app assumes features are in this order:  
 Age, Hours Worked, Posture Score, Movement Frequency, Breaks Taken, Pain Level, Feature 7, Feature 8, Feature 9.
 """)
+
