@@ -30,7 +30,7 @@ static_posture_duration = st.number_input("Duration of Static Posture (minutes)"
 
 # Prepare input array
 input_data = np.array([[age, hours_worked, posture_score, movement_freq,
-                        breaks_taken, pain_level, feature_7, feature_8, feature_9]])
+                        breaks_taken, pain_level, lift_weight, repetitive_motion, static_posture_duration]])
 
 # Scale and predict
 try:
@@ -49,4 +49,5 @@ st.write("""
 Note: The app assumes features are in this order:  
 Age, Hours Worked, Posture Score, Movement Frequency, Breaks Taken, Pain Level, Feature 7, Feature 8, Feature 9.
 """)
+
 
